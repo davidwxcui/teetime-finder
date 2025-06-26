@@ -27,9 +27,9 @@ To use the TeeTime Finder, clone the repository and run the bot using Node.js. M
 
 ### Prerequisites
 
-- Node.js (version X.X or higher)
+- Node.js
 - Twilio account for SMS notifications
-- Any additional dependencies specified in `package.json`
+- puppeteer
 
 ### Installation
 
@@ -43,7 +43,7 @@ To use the TeeTime Finder, clone the repository and run the bot using Node.js. M
    ```
 3. Install the required dependencies:
    ```bash
-   npm install
+   npm install puppeteer twilio
    ```
 
 ### Configuration
