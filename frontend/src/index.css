@@ -1,0 +1,14 @@
+/* Reset all default Vite styles that interfere with the dashboard layout */
+#root {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+  display: block;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+}

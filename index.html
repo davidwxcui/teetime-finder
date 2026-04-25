@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TeeTime Finder Dashboard</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Outfit:wght@400;600;800&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --accent-color: #38bdf8;
+            --accent-hover: #0ea5e9;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border-color: #334155;
+            --success: #22c55e;
+            --error: #ef4444;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 40px 20px;
+        }
+
+        h1,
+        h2,
+        h3 {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 800;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 50px;
+            animation: fadeInDown 0.8s ease-out;
+        }
+
+        header h1 {
+            font-size: 3rem;
+            background: linear-gradient(to right, #38bdf8, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 30px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .card h2 {
+            margin-bottom: 25px;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 12px 16px;
+            background: #0f172a;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            color: white;
+            font-family: inherit;
+            transition: border-color 0.3s ease;
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--accent-color);
+        }
+
+        .btn {
+            background: var(--accent-color);
+            color: #0f172a;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            font-size: 1rem;
+            margin-top: 10px;
+        }
+
+        .btn:hover {
+            background: var(--accent-hover);
+            transform: scale(1.02);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border: 2px solid var(--accent-color);
+            color: var(--accent-color);
+            margin-top: 20px;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(56, 189, 248, 0.1);
+            color: var(--accent-color);
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            margin-left: 10px;
+        }
+
+        .status-online {
+            background: rgba(34, 197, 94, 0.2);
+            color: var(--success);
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .footer {
+            margin-top: 60px;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>TeeTime Finder</h1>
+            <p>Advanced Bot Configuration Dashboard</p>
+        </header>
+
+        <main>
+            <div class="grid">
+                <!-- Search Settings -->
+                <section class="card">
+                    <h2>🔍 Search Parameters</h2>
+
+                    <div class="form-group">
+                        <label>Vancouver Courses</label>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="course_mccleery" value="McCleery">
+                            <label for="course_mccleery" style="margin:0">McCleery</label>
+                        </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="course_fraserview" value="Fraserview">
+                            <label for="course_fraserview" style="margin:0">Fraserview</label>
+                        </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="course_langara" value="Langara">
+                            <label for="course_langara" style="margin:0">Langara</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Burnaby Courses</label>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="course_riverway" value="Riverway">
+                            <label for="course_riverway" style="margin:0">Riverway</label>
+                        </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="course_burnaby_mtn" value="Burnaby Mountain">
+                            <label for="course_burnaby_mtn" style="margin:0">Burnaby Mountain</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Start Hour (24h)</label>
+                        <input type="number" id="startTime" min="0" max="23">
+                    </div>
+                    <div class="form-group">
+                        <label>End Hour (24h)</label>
+                        <input type="number" id="endTime" min="0" max="23">
+                    </div>
+                    <div class="form-group">
+                        <label>Days to Search Ahead</label>
+                        <input type="number" id="daysToSearch" min="1" max="14">
+                    </div>
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="weekendsOnly">
+                        <label for="weekendsOnly" style="margin:0; color: var(--accent-color); font-weight: 700;">Only
+                            search weekends</label>
+                    </div>
+                    <div class="form-group" style="margin-top:20px">
+                        <label>Interval (Minutes)</label>
+                        <input type="number" id="intervalMinutes" min="1">
+                    </div>
+                </section>
+
+                <!-- Twilio Settings -->
+                <section class="card">
+                    <h2>📱 Notification Settings</h2>
+                    <div class="form-group">
+                        <label>Twilio Account SID</label>
+                        <input type="text" id="accountSid">
+                    </div>
+                    <div class="form-group">
+                        <label>Twilio Auth Token</label>
+                        <input type="password" id="authToken">
+                    </div>
+                    <div class="form-group">
+                        <label>Twilio "From" Number</label>
+                        <input type="text" id="fromPhone">
+                    </div>
+                    <div class="form-group">
+                        <label>Your Phone Number</label>
+                        <input type="text" id="toPhone">
+                    </div>
+                    <button class="btn" id="saveBtn">Save Settings</button>
+                    <button class="btn btn-secondary" id="runBtn">Run Scraper Now</button>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 15px; text-align: center;">
+                        Note: Twilio trial accounts are limited to 50 SMS per day.
+                    </p>
+                </section>
+            </div>
+                <!-- Logs Section -->
+                <section class="card" style="grid-column: span 2;">
+                    <h2>📜 Live Activity Logs</h2>
+                    <div id="logs" style="height: 300px; overflow-y: auto; background: #000; color: #0f0; font-family: monospace; padding: 15px; border-radius: 10px; font-size: 0.85rem; border: 1px solid var(--border-color);">
+                        <div>Waiting for activity...</div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const courseIds = ['course_mccleery', 'course_fraserview', 'course_langara', 'course_riverway', 'course_burnaby_mtn'];
+
+        // Load config
+        async function loadConfig() {
+            const res = await fetch('/api/config');
+            const config = await res.json();
+
+            // Set courses
+            const allSelectedCourses = [...config.search.vancouver.courses, ...config.search.burnaby.courses];
+            courseIds.forEach(id => {
+                const checkbox = document.getElementById(id);
+                checkbox.checked = allSelectedCourses.some(c => checkbox.value.includes(c));
+            });
+
+            document.getElementById('startTime').value = config.search.startTime;
+            document.getElementById('endTime').value = config.search.endTime;
+            document.getElementById('daysToSearch').value = config.search.daysToSearch;
+            document.getElementById('weekendsOnly').checked = config.search.weekendsOnly;
+            document.getElementById('intervalMinutes').value = config.search.intervalMinutes;
+
+            document.getElementById('accountSid').value = config.twilio.accountSid;
+            document.getElementById('authToken').value = config.twilio.authToken;
+            document.getElementById('fromPhone').value = config.twilio.fromPhone;
+            document.getElementById('toPhone').value = config.twilio.toPhone;
+        }
+
+        // Save config
+        document.getElementById('saveBtn').onclick = async () => {
+            const selectedVancouver = [];
+            if (document.getElementById('course_mccleery').checked) selectedVancouver.push('McCleery');
+            if (document.getElementById('course_fraserview').checked) selectedVancouver.push('Fraserview');
+            if (document.getElementById('course_langara').checked) selectedVancouver.push('Langara');
+
+            const selectedBurnaby = [];
+            if (document.getElementById('course_riverway').checked) selectedBurnaby.push('Riverway');
+            if (document.getElementById('course_burnaby_mtn').checked) selectedBurnaby.push('Burnaby Mountain');
+
+            const config = {
+                twilio: {
+                    accountSid: document.getElementById('accountSid').value,
+                    authToken: document.getElementById('authToken').value,
+                    fromPhone: document.getElementById('fromPhone').value,
+                    toPhone: document.getElementById('toPhone').value
+                },
+                search: {
+                    vancouver: {
+                        enabled: selectedVancouver.length > 0,
+                        courses: selectedVancouver
+                    },
+                    burnaby: {
+                        enabled: selectedBurnaby.length > 0,
+                        courses: selectedBurnaby
+                    },
+                    startTime: parseInt(document.getElementById('startTime').value),
+                    endTime: parseInt(document.getElementById('endTime').value),
+                    daysToSearch: parseInt(document.getElementById('daysToSearch').value),
+                    weekendsOnly: document.getElementById('weekendsOnly').checked,
+                    intervalMinutes: parseInt(document.getElementById('intervalMinutes').value)
+                }
+            };
+
+            await fetch('/api/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(config)
+            });
+            alert('Settings saved! The next scheduled run will use these settings.');
+        };
+
+        // Run scraper
+        document.getElementById('runBtn').onclick = async () => {
+            const res = await fetch('/api/run', { method: 'POST' });
+            const data = await res.json();
+            alert(data.message + '. See the logs below!');
+        };
+
+        async function pollLogs() {
+            try {
+                const res = await fetch('/api/logs');
+                const logs = await res.json();
+                const container = document.getElementById('logs');
+                if (logs.length > 0) {
+                    container.innerHTML = logs.map(log => `<div style="color:${log.type === 'error' ? '#f44' : '#0f0'}">[${log.time}] ${log.msg}</div>`).join('');
+                    container.scrollTop = container.scrollHeight;
+                }
+            } catch (e) {}
+        }
+        setInterval(pollLogs, 2000);
+
+        loadConfig();
+    </script>
+</body>
+
+</html>
