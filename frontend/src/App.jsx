@@ -18,11 +18,24 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [running, setRunning] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 768);
 
   useEffect(() => {
     fetchConfig();
     const logInterval = setInterval(fetchLogs, 2000);
-    return () => clearInterval(logInterval);
+    
+    // Handle window resize
+    const handleResize = () => {
+      if (window.innerWidth >= 768) {
+        setSidebarOpen(true);
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => {
+      clearInterval(logInterval);
+      window.removeEventListener('resize', handleResize);
+    };
   }, []);
 
   const fetchConfig = async () => {
@@ -102,7 +115,12 @@ function App() {
   return (
     <Router>
       <div className="app-container">
-        <Sidebar onRun={handleRun} />
+        <Sidebar 
+          onRun={handleRun} 
+          isOpen={sidebarOpen} 
+          onToggle={() => setSidebarOpen(!sidebarOpen)}
+          onNavigate={() => window.innerWidth < 768 && setSidebarOpen(false)}
+        />
 
         <main className="main-content">
           <Routes>

@@ -2,10 +2,27 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const { runAll, stopScraper } = require('./scrape');
 
 const app = express();
 const port = 3000;
+
+// Get local IP address
+function getLocalIP() {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]) {
+      // Skip internal and non-IPv4 addresses
+      if (iface.family === 'IPv4' && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return 'localhost';
+}
+
+const localIP = getLocalIP();
 
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'frontend', 'dist')));
@@ -68,6 +85,9 @@ app.get(/^(?!\/api).+/, (req, res) => {
 });
 
 
-app.listen(port, () => {
-  originalLog(`🚀 Tee Time Scraper Server running at http://localhost:${port}`);
+app.listen(port, '0.0.0.0', () => {
+  originalLog(`🚀 Tee Time Scraper Server running at:`);
+  originalLog(`   Local: http://localhost:${port}`);
+  originalLog(`   Network: http://${localIP}:${port}`);
+  originalLog(`📱 Open http://${localIP}:${port} on your phone to view on mobile!`);
 });
