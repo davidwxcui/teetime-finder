@@ -97,6 +97,29 @@ function isWeekend(dateStr) {
   return d.includes('sat') || d.includes('sun');
 }
 
+function logToCSV(date, time, course, golfers) {
+  const csvPath = path.join(__dirname, 'historical_data.csv');
+  const now = new Date().toISOString();
+  
+  // Create file with headers if it doesn't exist
+  if (!fs.existsSync(csvPath)) {
+    fs.writeFileSync(csvPath, 'scraped_at,tee_time_date,tee_time_slot,course,golfers\n');
+  }
+  
+  // Remove commas to prevent breaking the CSV format
+  const safeDate = date ? date.replace(/,/g, '').trim() : '';
+  const safeCourse = course ? course.replace(/,/g, '').trim() : '';
+  const safeGolfers = golfers ? golfers.replace(/,/g, '').trim() : '';
+  
+  const line = `${now},${safeDate},${time},${safeCourse},${safeGolfers}\n`;
+  
+  try {
+    fs.appendFileSync(csvPath, line);
+  } catch (err) {
+    console.error('❌ Failed to write to CSV:', err.message);
+  }
+}
+
 async function sendText(message, twilioConfig) {
   const twilioClient = twilio(twilioConfig.accountSid, twilioConfig.authToken);
   try {
@@ -321,6 +344,7 @@ async function checkTeeTimes(siteName, url, courseFilters = [], config) {
           }
           
           alertedTeeTimes.add(key);
+          logToCSV(day.date, match.time, match.course, match.golfers);
         } else {
           console.log(`🔁 Already alerted for: ${key}`);
         }
