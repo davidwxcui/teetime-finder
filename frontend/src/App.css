@@ -674,3 +674,34 @@ input:checked + .slider:before {
     font-size: 0.85rem;
   }
 }
+/* Notification Settings Enhancements */
+.notification-section {
+  background: rgba(248, 250, 252, 0.5);
+  border-radius: 16px;
+  padding: 20px;
+  margin-top: 16px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.section-header h4 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.section-content {
+  transition: all 0.3s ease;
+}
+
+.section-content.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+  filter: grayscale(1);
+}
+

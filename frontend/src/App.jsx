@@ -22,7 +22,11 @@ function App() {
 
   useEffect(() => {
     fetchConfig();
-    const logInterval = setInterval(fetchLogs, 2000);
+    fetchStatus();
+    const pollInterval = setInterval(() => {
+      fetchLogs();
+      fetchStatus();
+    }, 2000);
     
     // Handle window resize
     const handleResize = () => {
@@ -33,7 +37,7 @@ function App() {
     
     window.addEventListener('resize', handleResize);
     return () => {
-      clearInterval(logInterval);
+      clearInterval(pollInterval);
       window.removeEventListener('resize', handleResize);
     };
   }, []);
@@ -57,6 +61,15 @@ function App() {
     }
   };
 
+  const fetchStatus = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/api/status`);
+      setRunning(res.data.running);
+    } catch (err) {
+      console.error('Failed to fetch status', err);
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -73,10 +86,8 @@ function App() {
     setRunning(true);
     try {
       await axios.post(`${API_BASE}/api/run`);
-      alert('Scraper triggered! Check logs for progress.');
     } catch (err) {
       alert('Failed to trigger scraper');
-    } finally {
       setRunning(false);
     }
   };
@@ -132,6 +143,8 @@ function App() {
                     config={config} 
                     setConfig={setConfig} 
                     toggleCourse={toggleCourse} 
+                    onSave={handleSave}
+                    saving={saving}
                   />
                   <NotificationSettings 
                     config={config} 
@@ -153,6 +166,8 @@ function App() {
                   config={config} 
                   setConfig={setConfig} 
                   toggleCourse={toggleCourse} 
+                  onSave={handleSave}
+                  saving={saving}
                 />
               </>
             } />

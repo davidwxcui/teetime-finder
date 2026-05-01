@@ -3,10 +3,10 @@ const bodyParser = require('body-parser');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { runAll, stopScraper } = require('./scrape');
+const { runAll, start, stopScraper } = require('./scrape');
 
 const app = express();
-const port = 3000;
+const port = 5000;  // Changed from 3000 to 5000
 
 // Get local IP address
 function getLocalIP() {
@@ -62,14 +62,29 @@ app.get('/api/logs', (req, res) => {
   res.json(logs);
 });
 
+let isScraperRunning = false;
+
+app.get('/api/status', (req, res) => {
+  res.json({ running: isScraperRunning });
+});
+
 app.post('/api/run', async (req, res) => {
-  console.log('🚀 Manual run triggered from UI...');
-  res.json({ message: 'Scraper started' });
-  try {
-    await runAll();
-  } catch (err) {
-    console.error('❌ Scraper run error:', err.message);
+  if (isScraperRunning) {
+    console.log('⚠️ Manual run ignored: Scraper is already busy.');
+    return res.status(400).json({ message: 'Scraper is already running' });
   }
+
+  console.log('🚀 Scraper loop started from UI...');
+  isScraperRunning = true;
+  
+  // Start the continuous loop in the background
+  start().catch(err => {
+    console.error('❌ Scraper loop error:', err.message);
+  }).finally(() => {
+    isScraperRunning = false;
+  });
+
+  res.json({ message: 'Scraper started' });
 });
 
 app.post('/api/stop', (req, res) => {

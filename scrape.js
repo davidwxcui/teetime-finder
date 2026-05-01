@@ -3,6 +3,7 @@ const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 const twilio = require('twilio');
 const fs = require('fs');
 const path = require('path');
+const https = require('https');
 
 puppeteer.use(StealthPlugin());
 
@@ -10,7 +11,15 @@ const alertedTeeTimes = new Set();
 
 function getConfig() {
   const configPath = path.join(__dirname, 'config.json');
-  return JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  
+  // Override with command line arguments
+  if (process.argv.includes('--no-sms')) config.twilio.enabled = false;
+  if (process.argv.includes('--sms')) config.twilio.enabled = true;
+  if (process.argv.includes('--no-discord')) config.discord.enabled = false;
+  if (process.argv.includes('--discord')) config.discord.enabled = true;
+  
+  return config;
 }
 
 function isMatch(timeStr, config) {
@@ -43,6 +52,44 @@ function isMatch(timeStr, config) {
   return matched;
 }
 
+function golferMatch(scrapedGolfers, requestedGolfers) {
+  if (!requestedGolfers || requestedGolfers === 'any') return true;
+  if (!scrapedGolfers) return false;
+
+  const target = parseInt(requestedGolfers);
+  if (isNaN(target)) return true;
+
+  // Extract all numbers from the scraped string (e.g., "18 HOLES | 2 - 4 GOLFERS")
+  const numbers = scrapedGolfers.match(/\d+/g)?.map(Number) || [];
+  
+  if (numbers.length === 0) return true;
+
+  // If it's a range (e.g., [2, 4])
+  if (numbers.length >= 2) {
+    // If the string starts with holes (like "18 HOLES | 2 - 4"), the first number is holes.
+    // The browser check showed "18 HOLES | 2 - 4 GOLFERS"
+    // So we need to be careful.
+    const isHolesFirst = scrapedGolfers.toLowerCase().includes('holes');
+    const playerNumbers = isHolesFirst ? numbers.slice(1) : numbers;
+
+    if (playerNumbers.length >= 2) {
+      const [min, max] = playerNumbers;
+      return target >= min && target <= max;
+    } else if (playerNumbers.length === 1) {
+      return target <= playerNumbers[0];
+    }
+  } else if (numbers.length === 1) {
+    // If only one number, it's either holes or players.
+    // If it says "1 GOLFERS", numbers is [1].
+    // If it says "18 HOLES", numbers is [18].
+    if (scrapedGolfers.toLowerCase().includes('golfer')) {
+      return target <= numbers[0];
+    }
+  }
+
+  return true;
+}
+
 function isWeekend(dateStr) {
   if (!dateStr) return false;
   const d = dateStr.toLowerCase();
@@ -66,6 +113,34 @@ async function sendText(message, twilioConfig) {
         console.error('❌ Failed to send SMS:', err.message);
     }
   }
+}
+
+async function sendDiscord(message, webhookUrl) {
+  if (!webhookUrl) return;
+  const data = JSON.stringify({ content: message });
+  const url = new URL(webhookUrl);
+  const options = {
+    hostname: url.hostname,
+    path: url.pathname,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(data),
+    },
+  };
+
+  return new Promise((resolve, reject) => {
+    const req = https.request(options, (res) => {
+      res.on('data', () => {});
+      res.on('end', () => resolve());
+    });
+    req.on('error', (e) => {
+      console.error('❌ Discord notification failed:', e.message);
+      reject(e);
+    });
+    req.write(data);
+    req.end();
+  });
 }
 
 async function bypassBotDetection(page) {
@@ -209,12 +284,20 @@ async function checkTeeTimes(siteName, url, courseFilters = [], config) {
         const courseMatch = courseFilters.length > 0 ? 
             courseFilters.some(filter => tt.course.toLowerCase().includes(filter.toLowerCase())) : 
             true;
+        const golferPreference = config.search.golfers || 'any';
+        const golferMatchResult = golferMatch(tt.golfers, golferPreference);
         
-        if (timeMatch && courseMatch) {
-            console.log(`✅ MATCH: ${tt.time} at ${tt.course}`);
+        if (timeMatch && courseMatch && golferMatchResult) {
+            console.log(`✅ MATCH: ${tt.time} at ${tt.course} (${tt.golfers})`);
+        } else if (timeMatch && courseMatch && !golferMatchResult) {
+            console.log(`⏭️ Time/Course match but wrong golfer count: ${tt.time} at ${tt.course} (${tt.golfers}) - requested ${golferPreference}`);
         }
-        return timeMatch && courseMatch;
+        return timeMatch && courseMatch && golferMatchResult;
       });
+
+      if (matches.length === 0) {
+        console.log(`ℹ️ No matches found on ${day.date} for your current settings.`);
+      }
 
       for (const match of matches) {
         if (isStopping) break;
@@ -222,7 +305,21 @@ async function checkTeeTimes(siteName, url, courseFilters = [], config) {
 
         if (!alertedTeeTimes.has(key)) {
           const msg = `⛳ Tee time found on ${day.date}:\n${match.time} at ${match.course} (${match.golfers})`;
-          await sendText(msg, config.twilio);
+          
+          if (config.twilio && config.twilio.enabled && config.twilio.accountSid) {
+            await sendText(msg, config.twilio);
+            console.log(`📱 SMS notification sent for: ${key}`);
+          }
+          
+          if (config.discord && config.discord.enabled && config.discord.webhookUrl) {
+            try {
+              await sendDiscord(msg, config.discord.webhookUrl);
+              console.log(`📢 Discord notification successfully sent for: ${key}`);
+            } catch (err) {
+              console.error(`❌ FAILED to send Discord notification: ${err.message}`);
+            }
+          }
+          
           alertedTeeTimes.add(key);
         } else {
           console.log(`🔁 Already alerted for: ${key}`);
@@ -250,19 +347,88 @@ async function checkTeeTimes(siteName, url, courseFilters = [], config) {
 async function runAll() {
     isStopping = false; // Reset stop flag on new run
     const config = getConfig();
-    if (config.search.vancouver.enabled) {
-        await checkTeeTimes('Vancouver', 'https://golfvancouver.cps.golf/onlineresweb/', config.search.vancouver.courses, config);
+
+    console.log('--------------------------------------------------');
+    console.log('🚀 STARTING TEE TIME SEARCH');
+    console.log(`⏰ Window: ${config.search.startTime}:00 - ${config.search.endTime}:00`);
+    console.log(`📅 Search Days: ${config.search.daysToSearch} (${config.search.weekendsOnly ? 'Weekends Only' : 'All Days'})`);
+    console.log(`🔄 Interval: Every ${config.search.intervalMinutes} minutes`);
+    
+    const courses = [];
+    if (config.search.vancouver.enabled && config.search.vancouver.courses.length > 0) {
+        courses.push(`Vancouver (${config.search.vancouver.courses.join(', ')})`);
     }
-    if (!isStopping && config.search.burnaby.enabled) {
+    if (config.search.burnaby.enabled && config.search.burnaby.courses.length > 0) {
+        courses.push(`Burnaby (${config.search.burnaby.courses.join(', ')})`);
+    }
+    
+    if (courses.length === 0) {
+        console.log('⚠️ No courses selected for any site. Skipping search.');
+        return;
+    }
+    
+    console.log(`⛳ Courses: ${courses.join(' | ')}`);
+    console.log('--------------------------------------------------');
+
+    if (config.search.vancouver.enabled && config.search.vancouver.courses.length > 0) {
+        await checkTeeTimes('Vancouver', 'https://golfvancouver.cps.golf/onlineresweb/', config.search.vancouver.courses, config);
+        console.log('🏁 Vancouver check finished.');
+    } else {
+        console.log('⏭️ Skipping Vancouver (No courses selected or disabled)');
+    }
+
+    if (!isStopping && config.search.burnaby.enabled && config.search.burnaby.courses.length > 0) {
         await new Promise(resolve => setTimeout(resolve, 5000));
         await checkTeeTimes('Burnaby', 'https://golfburnaby.cps.golf/onlineresweb/', config.search.burnaby.courses, config);
+        console.log('🏁 Burnaby check finished.');
+    } else if (!isStopping) {
+        console.log('⏭️ Skipping Burnaby (No courses selected or disabled)');
     }
+    console.log('✨ All searches completed.');
+}
+
+let runCount = 0;
+async function start() {
+    isStopping = false; 
+    while (!isStopping) {
+        try {
+            runCount++;
+            console.log(`\n💎 RUN #${runCount} STARTING...`);
+            await runAll();
+            
+            if (isStopping) break;
+
+            console.log('✅ Scraper loop active. Preparing to sleep/restart...');
+            const config = getConfig();
+            const safeInterval = Math.max(0, config.search.intervalMinutes || 0);
+            
+            let sleepTime = safeInterval === 0 ? 5000 : safeInterval * 60 * 1000;
+            if (safeInterval === 0) {
+                console.log(`🔄 Restarting search in 5 seconds...`);
+            } else {
+                console.log(`💤 SLEEPING: Next search in ${safeInterval} minute(s)`);
+            }
+
+            // Sleep in smaller chunks to allow faster stopping
+            const chunk = 1000;
+            for (let i = 0; i < sleepTime; i += chunk) {
+                if (isStopping) break;
+                await new Promise(resolve => setTimeout(resolve, Math.min(chunk, sleepTime - i)));
+            }
+        } catch (err) {
+            if (isStopping) break;
+            console.error(`❌ Loop error: ${err.message}. Retrying in 30 seconds...`);
+            for (let i = 0; i < 30000; i += 1000) {
+                if (isStopping) break;
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+        }
+    }
+    console.log('🛑 Scraper loop terminated.');
 }
 
 if (require.main === module) {
-    runAll();
-    const config = getConfig();
-    setInterval(runAll, config.search.intervalMinutes * 60 * 1000);
+    start();
 }
 
-module.exports = { runAll, stopScraper };
+module.exports = { runAll, start, stopScraper };
